@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="hi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>SULTAN Original Bike Racing - Real Look</title><style>body{margin:0;background:#111;color:#fff;font-family:Arial;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}#box{position:relative;width:95vw;max-width:800px;aspect-ratio:16/9;box-shadow:0 0 20px rgba(0,255,200,.5);border-radius:12px;overflow:hidden}canvas{width:100%;height:100%;display:block}#ui{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;font-weight:bold;text-shadow:2px 2px 4px #000;z-index:10}.c{background:rgba(0,0,0,.7);padding:6px 12px;border-radius:6px;border:1px solid #00ffcc}#over{position:absolute;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;text-align:center}.btn{padding:12px 30px;background:linear-gradient(45deg,#00ffcc,#00cc99);border:none;border-radius:25px;font-weight:bold;cursor:pointer;margin-top:12px;color:#000}.touch{position:absolute;bottom:12px;width:100%;display:flex;justify-content:space-between;padding:0 14px;z-index:10}.tb{width:70px;height:70px;background:rgba(0,255,200,.28);border:2px solid #00ffcc;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}.hidden{display:none!important}</style></head><body>
+<h3 style="margin:8px">🏍️ SULTAN Original Bike Racer</h3>
+<div id="box">
+<canvas id="c" width="800" height="450"></canvas>
+<div id="ui"><div class="c">Score: <span id="sc">0</span></div><div class="c" style="color:#ffd700">Coins: <span id="co">0</span></div><div class="c" style="color:#00ffcc">Speed: <span id="sp">0</span></div></div>
+<div class="touch"><div class="tb" id="lb">◄</div><div class="tb" id="rb">►</div></div>
+<div id="over" class="hidden"><h1 style="color:#ff3366">Game Over!</h1><p>Score: <span id="fs">0</span> | Coins: <span id="fc">0</span></p><button class="btn" onclick="restart()">Play Again</button></div>
+<div id="start" style="position:absolute;inset:0;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;text-align:center;padding:20px"><h1 style="color:#00ffcc">👑 SULTAN MOTO<br>ORIGINAL LOOK</h1><p style="color:#aaa;font-size:13px;margin:10px 0">Original bike + Rider helmet + Lean drift + Sound<br>Jo pehle wala tha wahi - par HD me!</p><button class="btn" onclick="start()">🚀 START RACE</button><p style="font-size:11px;opacity:.6;margin-top:10px">🔊 Sound auto ON - A/D or ◄ ►</p></div>
+</div>
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+const sc=document.getElementById('sc'),co=document.getElementById('co'),sp=document.getElementById('sp'),fs=document.getElementById('fs'),fc=document.getElementById('fc'),over=document.getElementById('over'),startDiv=document.getElementById('start');
+let audioCtx=null,soundOn=true,engine=null,engineG=null;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}
+function sfx(t){if(!soundOn)return;initAudio();let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(t==='coin'){o.type='sine';o.frequency.setValueAtTime(700,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(1200,audioCtx.currentTime+0.15);g.gain.setValueAtTime(0.5,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0.01,audioCtx.currentTime+0.2);o.start();o.stop(audioCtx.currentTime+0.2);}else if(t==='crash'){o.type='sawtooth';o.frequency.setValueAtTime(200,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(30,audioCtx.currentTime+0.5);g.gain.setValueAtTime(0.6,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0.01,audioCtx.currentTime+0.5);o.start();o.stop(audioCtx.currentTime+0.5);}else if(t==='drift'){o.type='triangle';o.frequency.setValueAtTime(150,audioCtx.currentTime);o.frequency.linearRampToValueAtTime(300,audioCtx.currentTime+0.15);g.gain.setValueAtTime(0.3,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.2);o.start();o.stop(audioCtx.currentTime+0.2);}}
+function startEng(){if(!soundOn)return;initAudio();if(engine)return;engine=audioCtx.createOscillator();engineG=audioCtx.createGain();engine.type='sawtooth';engine.frequency.value=70;engineG.gain.value=0.07;engine.connect(engineG);engineG.connect(audioCtx.destination);engine.start();}
+function updEng(s){if(engine)engine.frequency.value=70+s*0.9;if(engineG)engineG.gain.value=0.06+s*0.002;}function stopEng(){if(engine){try{engine.stop()}catch(e){}engine=null;engineG=null;}}
+let run=false,score=0,coins=0,speed=5,road=0,drift=0,smokes=[],traffic=[],coinArr=[],trees=[];
+for(let i=0;i<14;i++)trees.push({x:Math.random()<0.5?Math.random()*0.2:0.8+Math.random()*0.2,y:Math.random()*450});
+const player={x:400,tx:400,w:28,h:62,spd:7,lean:0};const keys={l:false,r:false};
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A')keys.l=true;if(e.key==='ArrowRight'||e.key==='d'||e.key==='D')keys.r=true;});
+addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A')keys.l=false;if(e.key==='ArrowRight'||e.key==='d'||e.key==='D')keys.r=false;});
+function bind(id,k){let el=document.getElementById(id);el.addEventListener('touchstart',e=>{e.preventDefault();keys[k]=true},{passive:false});el.addEventListener('touchend',e=>{e.preventDefault();keys[k]=false},{passive:false});el.addEventListener('mousedown',()=>keys[k]=true);el.addEventListener('mouseup',()=>keys[k]=false);el.addEventListener('mouseleave',()=>keys[k]=false);}bind('lb','l');bind('rb','r');
+function drawRoad(){ctx.fillStyle='#87CEEB';ctx.fillRect(0,0,800,180);ctx.fillStyle='#2d8a4e';ctx.fillRect(0,180,800,270);
+trees.forEach(t=>{t.y+=speed*0.6;if(t.y>450){t.y=-25;t.x=Math.random()<0.5?Math.random()*0.2:0.8+Math.random()*0.2;}ctx.fillStyle='#1b5e20';ctx.fillRect(t.x*800,t.y,7,22);ctx.fillStyle='#2e7d32';ctx.beginPath();ctx.arc(t.x*800+3,t.y-5,13,0,Math.PI*2);ctx.fill();});
+ctx.beginPath();ctx.moveTo(280,180);ctx.lineTo(520,180);ctx.lineTo(680,450);ctx.lineTo(120,450);ctx.closePath();ctx.fillStyle='#2e2e2e';ctx.fill();ctx.fillStyle='#3a3a3a';ctx.beginPath();ctx.moveTo(280,180);ctx.lineTo(520,180);ctx.lineTo(620,450);ctx.lineTo(180,450);ctx.closePath();ctx.fill();
+ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.setLineDash([24,24]);ctx.lineDashOffset=-road;ctx.beginPath();ctx.moveTo(400,180);ctx.lineTo(400,450);ctx.stroke();ctx.setLineDash([]);road+=speed;}
+function drawOriginalBike(){
+if(keys.l)player.tx-=player.spd;if(keys.r)player.tx+=player.spd;player.tx=Math.max(145,Math.min(655,player.tx));
+let targetLean=0;if(keys.l)targetLean=-0.35;if(keys.r)targetLean=0.35;player.lean+=(targetLean-player.lean)*0.15;player.x+=(player.tx-player.x)*0.18;
+let isDr=Math.abs(player.lean)>0.2&&speed>7;if(isDr){drift++;if(drift%4==0){smokes.push({x:player.x-8+player.lean*12,y:430,vx:-1.2+player.lean*2+Math.random(),l:18});smokes.push({x:player.x+8+player.lean*12,y:430,vx:1.2+player.lean*2+Math.random(),l:18});if(drift%18==0)sfx('drift');}}
+smokes.forEach(s=>{s.y+=speed*0.4;s.x+=s.vx;s.vx*=0.96;s.l--;ctx.fillStyle=`rgba(170,170,170,${s.l/18*0.5})`;ctx.beginPath();ctx.arc(s.x,s.y,4.5,0,Math.PI*2);ctx.fill();});smokes=smokes.filter(s=>s.l>0);
+ctx.save();ctx.translate(player.x,400);ctx.rotate(player.lean*0.6);
+// Bike shadow
+ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.ellipse(0,42,22,8,0,0,Math.PI*2);ctx.fill();
+// Tyres - Original look
+ctx.fillStyle='#111';ctx.beginPath();ctx.arc(0,38,9,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,-28,9,0,Math.PI*2);ctx.fill();
+// Tyre rims
+ctx.fillStyle='#888';ctx.beginPath();ctx.arc(0,38,4,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,-28,4,0,Math.PI*2);ctx.fill();
+// Bike body - Original cyan color
+ctx.fillStyle='#00e6c0';ctx.fillRect(-11,-22,22,54);ctx.fillStyle='#00bfa0';ctx.fillRect(-11,-22,22,12);
+// Engine part
+ctx.fillStyle='#333';ctx.fillRect(-8,8,16,14);
+// Rider body
+ctx.fillStyle='#1a1a2a';ctx.fillRect(-9,-36,18,20);
+// Rider arms
+ctx.fillStyle='#1a1a2a';ctx.fillRect(-14,-30,5,18);ctx.fillRect(9,-30,5,18);
+// Helmet - Orange original
+ctx.fillStyle='#ffaa00';ctx.beginPath();ctx.arc(0,-44,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffcc33';ctx.beginPath();ctx.arc(-2,-46,3,0,Math.PI*2);ctx.fill();
+// Visor
+ctx.fillStyle='#111';ctx.fillRect(-8,-43,16,4);
+// Number plate SULTAN 53
+ctx.fillStyle='#fff';ctx.fillRect(-14,-6,28,8);ctx.fillStyle='#000';ctx.font='bold 6px Arial';ctx.textAlign='center';ctx.fillText('53',0,-1);
+ctx.restore();
+}
+function spawn(){if(Math.random()<0.032){let rl=185,rr=615;traffic.push({x:rl+Math.random()*(rr-rl),y:-90,w:34,h:64,c:['#e53935','#1e88e5','#fdd835','#8e24aa'][Math.floor(Math.random()*4)]})}if(Math.random()<0.022){let rl=210,rr=590;coinArr.push({x:rl+Math.random()*(rr-rl),y:-30})}}
+function update(){spawn();
+for(let i=traffic.length-1;i>=0;i--){let ca=traffic[i];ca.y+=speed*0.82;ctx.fillStyle=ca.c;ctx.fillRect(ca.x,ca.y,ca.w,ca.h);ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(ca.x,ca.y,ca.w,8);ctx.fillStyle='#111';ctx.fillRect(ca.x+4,ca.y+ca.h-8,ca.w-8,6);
+if(player.x-player.w/2<ca.x+ca.w&&player.x+player.w/2>ca.x&&372<ca.y+ca.h&&430>ca.y){sfx('crash');stopEng();run=false;fs.innerText=score;fc.innerText=coins;over.classList.remove('hidden');}
+if(ca.y>470){traffic.splice(i,1);score+=10;sc.innerText=score;if(score%60==0)speed+=0.6;}}
+for(let i=coinArr.length-1;i>=0;i--){let cn=coinArr[i];cn.y+=speed*0.82;ctx.fillStyle='#ff8f00';ctx.beginPath();ctx.arc(cn.x,cn.y,11,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffd700';ctx.beginPath();ctx.arc(cn.x,cn.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b36a00';ctx.font='bold 9px Arial';ctx.textAlign='center';ctx.fillText('$',cn.x,cn.y+3);
+if(Math.abs(player.x-cn.x)<26&&Math.abs(400-cn.y)<36){coinArr.splice(i,1);coins++;co.innerText=coins;score+=25;sc.innerText=score;sfx('coin');}else if(cn.y>480)coinArr.splice(i,1);}
+updEng(speed);sp.innerText=Math.floor(speed*10)+' KM/H';}
+function loop(){if(!run){return;}ctx.clearRect(0,0,800,450);drawRoad();drawOriginalBike();update();requestAnimationFrame(loop);}
+function start(){initAudio();score=0;coins=0;speed=5;traffic=[];coinArr=[];smokes=[];player.x=400;player.tx=400;player.lean=0;sc.innerText=0;co.innerText=0;startDiv.style.display='none';over.classList.add('hidden');run=true;startEng();loop();}
+function restart(){start();}
+window.start=start;window.restart=restart;
+</script></body></html>
